@@ -22,7 +22,6 @@
             font-family: '-apple-system', BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
 
-        /* Fuerza a que todo quepa en una sola pantalla sin hacer scroll */
         html, body {
             height: 100vh;
             overflow: hidden;
@@ -251,7 +250,6 @@
 </div>
 
 <script>
-    // Generar el menú de copias dinámicamente sin errores
     const selectCopies = document.getElementById('select-copies');
     for (let i = 1; i <= 20; i++) {
         let opt = document.createElement('option');
@@ -274,13 +272,13 @@
     let characteristicBLE = null;
     let currentImg = null;
 
+    // Ancho fijo estándar de 384 puntos para cabezales térmicos portátiles de 58mm
     function updateDimensions() {
+        canvas.width = 384; 
         if (selectSize.value === '50x15') {
-            canvas.width = 500;
-            canvas.height = 150;
+            canvas.height = 114;
         } else {
-            canvas.width = 500;
-            canvas.height = 100;
+            canvas.height = 76;
         }
         renderSticker();
     }
@@ -298,7 +296,6 @@
         let y = (canvas.height / 2) - (h / 2);
         ctx.drawImage(currentImg, x, y, w, h);
 
-        // Convertir a blanco y negro puro para el cabezal térmico
         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imgData.data;
         for (let i = 0; i < data.length; i += 4) {
@@ -311,32 +308,16 @@
 
     selectSize.addEventListener('change', updateDimensions);
 
-    // Eventos de carga corregidos y limpios
-    dropZone.addEventListener('click', function() { 
-        fileInput.click(); 
-    });
-    
-    dropZone.addEventListener('dragover', function(e) { 
-        e.preventDefault(); 
-        dropZone.style.borderColor = 'var(--accent)'; 
-    });
-    
-    dropZone.addEventListener('dragleave', function() { 
-        dropZone.style.borderColor = 'var(--border)'; 
-    });
-    
+    dropZone.addEventListener('click', function() { fileInput.click(); });
+    dropZone.addEventListener('dragover', function(e) { e.preventDefault(); dropZone.style.borderColor = 'var(--accent)'; });
+    dropZone.addEventListener('dragleave', function() { dropZone.style.borderColor = 'var(--border)'; });
     dropZone.addEventListener('drop', function(e) {
         e.preventDefault();
         dropZone.style.borderColor = 'var(--border)';
-        if (e.dataTransfer.files.length > 0) {
-            processFile(e.dataTransfer.files[0]);
-        }
+        if (e.dataTransfer.files.length > 0) processFile(e.dataTransfer.files[0]);
     });
-
     fileInput.addEventListener('change', function(e) {
-        if (e.target.files.length > 0) {
-            processFile(e.target.files[0]);
-        }
+        if (e.target.files.length > 0) processFile(e.target.files[0]);
     });
 
     function processFile(file) {
@@ -360,20 +341,17 @@
         }
     }
 
-    // Vinculación por Bluetooth
     btnConnect.addEventListener('click', async function() {
         if (!navigator.bluetooth) {
-            alert('Tu navegador o PC no soporta Web Bluetooth, o no estás usando HTTPS (GitHub Pages).');
+            alert('Tu navegador o PC no soporta Web Bluetooth o necesitas usar HTTPS.');
             return;
         }
         try {
             deviceBLE = await navigator.bluetooth.requestDevice({
                 acceptAllDevices: true,
                 optionalServices: [
-                    '0000ffe0-0000-1000-8000-00805f9b34fb',
-                    '0000ff00-0000-1000-8000-00805f9b34fb',
-                    '000018f0-0000-1000-8000-00805f9b34fb',
-                    '49535343-fe7d-4ae5-8fa9-9fafd205e455'
+                    '0000ffe0-0000-1000-8000-00805f9b34fb', // Puerto serie genérico de impresión
+                    '0000ff00-0000-1000-8000-00805f9b34fb'  // Canal alternativo iLabel
                 ]
             });
 
@@ -392,7 +370,7 @@
                 if(characteristicBLE) break;
             }
 
-            if (!characteristicBLE) throw new Error('Canal de escritura no disponible.');
+            if (!characteristicBLE) throw new Error('No se encontró canal de escritura.');
 
             statusIndicator.classList.add('connected');
             statusText.innerHTML = `Conectado: ${deviceBLE.name}`;
@@ -404,17 +382,32 @@
         }
     });
 
-    // Envío de impresión térmica
+    // SISTEMA DE IMPRESIÓN REVISADO (Comando ESC/POS GS v 0 alternativo)
     btnPrint.addEventListener('click', async function() {
         if (!characteristicBLE || !currentImg) return;
         const copies = parseInt(selectCopies.value);
 
         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-        let bufferBytes = [];
+        const widthBytes = canvas.width / 8; // 48 bytes
+        const heightPixels = canvas.height;
 
-        bufferBytes.push(0x1B, 0x40); // Reset
+        let payload = [];
 
-        for (let y = 0; y < canvas.height; y++) {
+        // 1. Inicialización (ESC @)
+        payload.push(0x1B, 0x40);
+        // 2. Ajustar interlineado a 0 (ESC 3 0) para evitar huecos entre pasadas del cabezal
+        payload.push(0x1B, 0x33, 0x00);
+
+        // 3. Comando de impresión gráfica de mapa de bits por densidad (GS v 0)
+        // Estructura: GS v 0 m xL xH yL yH [datos...]
+        // m=0 (normal), xL=48, xH=0 (ancho en bytes), yL, yH (alto en píxeles)
+        const yL = heightPixels & 0xFF;
+        const yH = (heightPixels >> 8) & 0xFF;
+
+        payload.push(0x1D, 0x76, 0x30, 0x00, widthBytes, 0x00, yL, yH);
+
+        // 4. Procesar la cuadrícula de píxeles
+        for (let y = 0; y < heightPixels; y++) {
             for (let x = 0; x < canvas.width; x += 8) {
                 let byteValue = 0;
                 for (let bit = 0; bit < 8; bit++) {
@@ -423,28 +416,31 @@
                         byteValue |= (1 << (7 - bit));
                     }
                 }
-                bufferBytes.push(byteValue);
+                payload.push(byteValue);
             }
         }
 
-        bufferBytes.push(0x1D, 0x56, 0x42, 0x00); // Corte/Avance
-        const dataToSend = new Uint8Array(bufferBytes);
+        // 5. Alimentación de papel final y corte (ESC d 3 líneas)
+        payload.push(0x1B, 0x64, 0x03);
+
+        const dataToSend = new Uint8Array(payload);
 
         try {
             btnPrint.disabled = true;
             btnPrint.innerHTML = 'Enviando...';
             
             for (let c = 1; c <= copies; c++) {
+                // Envío en ráfagas de 20 bytes espaciadas para procesadores BLE lentos
                 const chunkSize = 20;
                 for (let offset = 0; offset < dataToSend.length; offset += chunkSize) {
                     const chunk = dataToSend.slice(offset, offset + chunkSize);
                     await characteristicBLE.writeValueWithoutResponse(chunk);
-                    await new Promise(r => setTimeout(r, 8));
+                    await new Promise(r => setTimeout(r, 6)); // 6ms de pausa de flujo
                 }
             }
-            alert('¡Impresión completada con éxito!');
+            alert('¡Impresión enviada correctamente!');
         } catch (error) {
-            alert(`Error en la cola de impresión: ${error.message}`);
+            alert(`Error de transmisión: ${error.message}`);
         } finally {
             btnPrint.disabled = false;
             btnPrint.innerHTML = 'Imprimir';

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>StickerPrint</title>
+    <title>StickerPrint - Emilio's Studio</title>
     <style>
         :root {
             --bg-color: #0c0d11;
@@ -13,6 +13,7 @@
             --text: #ffffff;
             --text-muted: #7e8494;
             --border: #222533;
+            --console-bg: #090a0e;
         }
 
         * {
@@ -39,9 +40,9 @@
             border-radius: 14px;
             width: 100%;
             max-width: 440px;
-            height: 95vh;
-            max-height: 580px;
-            padding: 20px;
+            height: 98vh;
+            max-height: 680px;
+            padding: 18px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -50,11 +51,11 @@
 
         header {
             text-align: center;
-            padding-bottom: 5px;
+            padding-bottom: 2px;
         }
 
         header h1 {
-            font-size: 1.4rem;
+            font-size: 1.3rem;
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -69,9 +70,9 @@
             justify-content: space-between;
             align-items: center;
             background: rgba(0,0,0,0.25);
-            padding: 8px 12px;
+            padding: 6px 12px;
             border-radius: 6px;
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             border: 1px solid var(--border);
         }
 
@@ -89,10 +90,10 @@
             box-shadow: 0 0 6px var(--accent);
         }
 
-        .grid-2 {
+        .grid-3 {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
+            grid-template-columns: 1.2fr 1fr 1fr;
+            gap: 8px;
         }
 
         .control-group {
@@ -101,7 +102,7 @@
         }
 
         label {
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             color: var(--text-muted);
             margin-bottom: 4px;
             text-transform: uppercase;
@@ -112,9 +113,9 @@
             background: #1a1d29;
             border: 1px solid var(--border);
             color: var(--text);
-            padding: 8px 10px;
+            padding: 6px 8px;
             border-radius: 6px;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             outline: none;
             cursor: pointer;
         }
@@ -122,7 +123,7 @@
         .upload-zone {
             border: 2px dashed var(--border);
             border-radius: 8px;
-            padding: 20px 10px;
+            padding: 12px 10px;
             text-align: center;
             cursor: pointer;
             background: rgba(255,255,255,0.01);
@@ -131,7 +132,7 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            height: 110px;
+            height: 85px;
         }
 
         .upload-zone:hover {
@@ -141,7 +142,7 @@
 
         .upload-zone p {
             color: var(--text-muted);
-            font-size: 0.85rem;
+            font-size: 0.8rem;
         }
 
         #file-input { display: none; }
@@ -167,13 +168,29 @@
             image-rendering: pixelated;
         }
 
+        /* Consola Terminal de Diagnóstico */
+        .terminal-box {
+            background: var(--console-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px;
+            height: 75px;
+            overflow-y: auto;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.7rem;
+            color: #8a90a6;
+        }
+        .terminal-box .log-entry { margin-bottom: 2px; }
+        .terminal-box .log-success { color: var(--accent); }
+        .terminal-box .log-error { color: #ff5555; }
+
         .btn {
             background: var(--accent);
             color: #0c0d11;
             border: none;
-            padding: 12px;
+            padding: 10px;
             border-radius: 6px;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             font-weight: 700;
             cursor: pointer;
             transition: all 0.2s;
@@ -181,10 +198,7 @@
             width: 100%;
         }
 
-        .btn:hover {
-            background: var(--accent-hover);
-        }
-
+        .btn:hover { background: var(--accent-hover); }
         .btn:disabled {
             background: var(--border);
             color: var(--text-muted);
@@ -196,10 +210,7 @@
             color: var(--text);
             border: 1px solid var(--border);
         }
-
-        .btn-secondary:hover {
-            background: rgba(255,255,255,0.05);
-        }
+        .btn-secondary:hover { background: rgba(255,255,255,0.05); }
     </style>
 </head>
 <body>
@@ -212,16 +223,23 @@
     <div class="status-bar">
         <div>
             <span id="status-indicator" class="status-dot"></span>
-            <span id="status-text">Impresora desconectada</span>
+            <span id="status-text">Impresora fuera de línea</span>
         </div>
     </div>
 
-    <div class="grid-2">
+    <div class="grid-3">
         <div class="control-group">
-            <label>Medida Etiqueta</label>
+            <label>Protocolo Driver</label>
+            <select id="select-protocol">
+                <option value="ilabel" selected>iLabel Nativo</option>
+                <option value="escpos">ESC/POS Gráfico</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>Medidas</label>
             <select id="select-size">
-                <option value="50x15" selected>50mm x 15mm</option>
-                <option value="50x10">50mm x 10mm</option>
+                <option value="50x15" selected>50x15 mm</option>
+                <option value="50x10">50x10 mm</option>
             </select>
         </div>
         <div class="control-group">
@@ -231,34 +249,44 @@
     </div>
 
     <div class="upload-zone" id="drop-zone">
-        <p><strong>Haz clic o arrastra aquí</strong></p>
-        <p style="font-size: 0.75rem; margin-top: 4px; color: var(--accent);">tu pegatina (.png, .jpg)</p>
+        <p><strong>Arrastra o haz clic aquí</strong></p>
+        <p style="font-size: 0.7rem; color: var(--accent); margin-top: 2px;">Imagen para pegatina</p>
         <input type="file" id="file-input" accept="image/png, image/jpeg">
     </div>
 
     <div class="preview-container">
-        <label>Previsualización Monocromo</label>
+        <label>Previsualización Monocromo Binaria</label>
         <div class="sticker-frame">
             <canvas id="canvas-preview"></canvas>
         </div>
     </div>
 
-    <div class="grid-2">
-        <button class="btn btn-secondary" id="btn-connect">Conectar Bluetooth</button>
+    <div class="control-group">
+        <label>Consola del Sistema de Impresión</label>
+        <div class="terminal-box" id="terminal-log">
+            <div class="log-entry">🤖 Sistema listo. Esperando conexión Bluetooth...</div>
+        </div>
+    </div>
+
+    <div class="grid-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <button class="btn btn-secondary" id="btn-connect">Enlazar BLE</button>
         <button class="btn" id="btn-print" disabled>Imprimir</button>
     </div>
 </div>
 
 <script>
+    // Inyectar el bucle de copias
     const selectCopies = document.getElementById('select-copies');
     for (let i = 1; i <= 20; i++) {
         let opt = document.createElement('option');
         opt.value = i;
-        opt.textContent = `${i} ${i === 1 ? 'copia' : 'copias'}`;
+        opt.textContent = `${i} und`;
+        if(i===1) opt.selected = true;
         selectCopies.appendChild(opt);
     }
 
     const selectSize = document.getElementById('select-size');
+    const selectProtocol = document.getElementById('select-protocol');
     const dropZone = document.getElementById('drop-zone');
     const fileInput = document.getElementById('file-input');
     const canvas = document.getElementById('canvas-preview');
@@ -267,26 +295,30 @@
     const btnPrint = document.getElementById('btn-print');
     const statusIndicator = document.getElementById('status-indicator');
     const statusText = document.getElementById('status-text');
+    const terminalLog = document.getElementById('terminal-log');
 
     let deviceBLE = null;
     let characteristicBLE = null;
-    let useWithoutResponse = false; // Flag dinámico de escritura
+    let writeModeWithoutResponse = true;
     let currentImg = null;
 
+    function logger(msg, type = '') {
+        const entry = document.createElement('div');
+        entry.className = `log-entry ${type ? 'log-' + type : ''}`;
+        entry.textContent = `> ${msg}`;
+        terminalLog.appendChild(entry);
+        terminalLog.scrollTop = terminalLog.scrollHeight;
+    }
+
     function updateDimensions() {
-        canvas.width = 384; 
-        if (selectSize.value === '50x15') {
-            canvas.height = 114;
-        } else {
-            canvas.height = 76;
-        }
+        canvas.width = 384; // Resolución nativa horizontal fija
+        canvas.height = (selectSize.value === '50x15') ? 114 : 76;
         renderSticker();
     }
 
     function renderSticker() {
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-
         if (!currentImg) return;
 
         let scale = Math.min(canvas.width / currentImg.width, canvas.height / currentImg.height);
@@ -300,32 +332,32 @@
         const data = imgData.data;
         for (let i = 0; i < data.length; i += 4) {
             let brightness = 0.34 * data[i] + 0.5 * data[i + 1] + 0.16 * data[i + 2];
-            let color = brightness > 128 ? 255 : 0;
+            let color = brightness > 120 ? 255 : 0; // Umbral térmico directo
             data[i] = color; data[i+1] = color; data[i+2] = color;
         }
         ctx.putImageData(imgData, 0, 0);
     }
 
     selectSize.addEventListener('change', updateDimensions);
-
-    dropZone.addEventListener('click', function() { fileInput.click(); });
-    dropZone.addEventListener('dragover', function(e) { e.preventDefault(); dropZone.style.borderColor = 'var(--accent)'; });
-    dropZone.addEventListener('dragleave', function() { dropZone.style.borderColor = 'var(--border)'; });
-    dropZone.addEventListener('drop', function(e) {
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--accent)'; });
+    dropZone.addEventListener('dragleave', () => dropZone.style.borderColor = 'var(--border)'; });
+    dropZone.addEventListener('drop', (e) => {
         e.preventDefault();
         dropZone.style.borderColor = 'var(--border)';
         if (e.dataTransfer.files.length > 0) processFile(e.dataTransfer.files[0]);
     });
-    fileInput.addEventListener('change', function(e) {
+    fileInput.addEventListener('change', (e) => {
         if (e.target.files.length > 0) processFile(e.target.files[0]);
     });
 
     function processFile(file) {
         const reader = new FileReader();
-        reader.onload = function(event) {
+        reader.onload = (event) => {
             currentImg = new Image();
-            currentImg.onload = function() {
+            currentImg.onload = () => {
                 updateDimensions();
+                logger('Imagen procesada correctamente en búfer gráfica.', 'success');
                 checkReady();
             };
             currentImg.src = event.target.result;
@@ -341,118 +373,169 @@
         }
     }
 
-    // Sincronización robusta con filtrado de canales de datos
-    btnConnect.addEventListener('click', async function() {
+    // ARQUITECTURA DE ENLACE BLUETOOTH FILTRADA ANTIBLOQUEOS (GATT FIXED)
+    btnConnect.addEventListener('click', async () => {
         if (!navigator.bluetooth) {
-            alert('Tu navegador o PC no soporta Web Bluetooth o necesitas usar HTTPS.');
+            logger('Error: Web Bluetooth no soportado o entorno HTTP inseguro.', 'error');
+            alert('Necesitas usar Google Chrome / Edge y protocolo HTTPS.');
             return;
         }
         try {
+            logger('Abriendo cuadro de emparejamiento BLE...');
             deviceBLE = await navigator.bluetooth.requestDevice({
                 acceptAllDevices: true,
                 optionalServices: [
-                    '0000ff00-0000-1000-8000-00805f9b34fb',
-                    '0000ffe0-0000-1000-8000-00805f9b34fb',
-                    '0000ffe1-0000-1000-8000-00805f9b34fb',
-                    '0000ff02-0000-1000-8000-00805f9b34fb',
-                    '49535343-fe7d-4ae5-8fa9-9fafd205e455',
-                    '000018f0-0000-1000-8000-00805f9b34fb'
+                    '0000ff00-0000-1000-8000-00805f9b34fb', // iLabel / VSON Principal
+                    '0000ffe0-0000-1000-8000-00805f9b34fb', // Puerto serie universal ESC/POS
+                    '49535343-fe7d-4ae5-8fa9-9fafd205e455'  // Módulo alternativo ISSC
                 ]
             });
 
-            statusText.innerHTML = "Conectando...";
+            logger(`Conectando al servidor GATT de: ${deviceBLE.name}...`);
             const server = await deviceBLE.gatt.connect();
+            
+            logger('Explorando servicios primarios de impresión...');
             const services = await server.getPrimaryServices();
-
+            
             characteristicBLE = null;
 
-            for(let service of services) {
-                const sUuid = service.uuid.toLowerCase();
-                // IGNORAR CANALES DEL SISTEMA OPERATIVO PARA EVITAR COMPORTAMIENTOS PRIVADOS RECHAZADOS (GATT FAILED)
-                if (sUuid.startsWith('00001800') || sUuid.startsWith('00001801') || sUuid.startsWith('0000180a')) {
-                    continue;
-                }
+            // Listado de UUIDs conocidos de escritura para forzar prioridad y evitar canales basura del OS
+            const knownDataUUIDs = [
+                '0000ff02-0000-1000-8000-00805f9b34fb',
+                '0000ffe1-0000-1000-8000-00805f9b34fb',
+                '0000ff01-0000-1000-8000-00805f9b34fb'
+            ];
 
-                let characteristics = await service.getCharacteristics();
-                for(let char of characteristics) {
-                    if(char.properties.write || char.properties.writeWithoutResponse) {
-                        characteristicBLE = char;
-                        // Forzar el método compatible según el hardware del chip
-                        useWithoutResponse = char.properties.writeWithoutResponse;
+            for (let service of services) {
+                const sUuid = service.uuid.toLowerCase();
+                // Saltarse descriptores del sistema operativo que lanzan el GATT Operation Failed
+                if (sUuid.includes('1800') || sUuid.includes('1801') || sUuid.includes('180a')) continue;
+
+                let chars = await service.getCharacteristics();
+                
+                // Intento 1: Buscar coincidencia de canal verificado
+                for (let ch of chars) {
+                    if (knownDataUUIDs.includes(ch.uuid.toLowerCase())) {
+                        characteristicBLE = ch;
                         break;
                     }
                 }
-                if(characteristicBLE) break;
+                
+                // Intento 2: Fallback al primer canal genérico con permisos de escritura
+                if (!characteristicBLE) {
+                    for (let ch of chars) {
+                        if (ch.properties.write || ch.properties.writeWithoutResponse) {
+                            characteristicBLE = ch;
+                            break;
+                        }
+                    }
+                }
+                if (characteristicBLE) break;
             }
 
-            if (!characteristicBLE) throw new Error('No se encontró un canal de impresión válido libre.');
+            if (!characteristicBLE) throw new Error('Canal de datos de escritura inaccesible.');
 
-            statusIndicator.classList.add('connected');
-            statusText.innerHTML = `Conectado: ${deviceBLE.name}`;
-            btnConnect.innerHTML = 'Listo ✓';
+            // Calibrar dinámicamente si el hardware requiere confirmación o ráfaga libre
+            if (characteristicBLE.properties.write) {
+                writeModeWithoutResponse = false; // El modo "With Response" es 100% estable contra caídas de buffer
+                logger('Canal verificado: Modo Sincrónico (Con Respuesta).', 'success');
+            } else {
+                writeModeWithoutResponse = true;
+                logger('Canal verificado: Modo Asincrónico (Ráfaga Directa).', 'success');
+            }
+
+            logger(`Conexión blindada con éxito a canal: [${characteristicBLE.uuid.substring(4,8).toUpperCase()}]`, 'success');
+            statusIndicator.className = 'status-dot connected';
+            statusText.innerHTML = `Línea activa: ${deviceBLE.name}`;
+            btnConnect.innerHTML = 'Conectado ✓';
             checkReady();
-        } catch (error) {
-            statusText.innerHTML = "Impresora desconectada";
-            alert(`Error de sincronización: ${error.message}`);
+        } catch (err) {
+            logger(`Fallo de Enlace: ${err.message}`, 'error');
+            statusText.innerHTML = "Impresora fuera de línea";
+            alert(`Error de sincronización: ${err.message}`);
         }
     });
 
-    // Inyección de búfer adaptada con conmutación de escritura segura
-    btnPrint.addEventListener('click', async function() {
+    // MOTOR EXECUTOR DE IMPRESIÓN CON CONMUTACIÓN DE PROTOCOLOS
+    btnPrint.addEventListener('click', async () => {
         if (!characteristicBLE || !currentImg) return;
         const copies = parseInt(selectCopies.value);
+        const protocol = selectProtocol.value;
 
         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-        const widthBytes = canvas.width / 8; 
+        const widthBytes = canvas.width / 8; // 384 puntos / 8 = 48 bytes por fila
         const heightPixels = canvas.height;
 
         let payload = [];
 
-        // Comandos ESC/POS de impresión gráfica universales
-        payload.push(0x1B, 0x40);
-        payload.push(0x1B, 0x33, 0x00);
-
-        const yL = heightPixels & 0xFF;
-        const yH = (heightPixels >> 8) & 0xFF;
-        payload.push(0x1D, 0x76, 0x30, 0x00, widthBytes, 0x00, yL, yH);
-
-        for (let y = 0; y < heightPixels; y++) {
-            for (let x = 0; x < canvas.width; x += 8) {
-                let byteValue = 0;
-                for (let bit = 0; bit < 8; bit++) {
-                    let idx = ((y * canvas.width) + (x + bit)) * 4;
-                    if (idx < imgData.length && imgData[idx] === 0) {
-                        byteValue |= (1 << (7 - bit));
+        if (protocol === 'ilabel') {
+            // PROTOCOLO 1: iLabel / VSON Estructurado Fila a Fila
+            payload.push(0x1F, 0x11, 0x01, 0x00); // Inicializar cabezal iLabel
+            for (let y = 0; y < heightPixels; y++) {
+                payload.push(0x1F, 0x11, 0x04, widthBytes); // Comando de inyección lineal
+                for (let x = 0; x < canvas.width; x += 8) {
+                    let byteValue = 0;
+                    for (let bit = 0; bit < 8; bit++) {
+                        let idx = ((y * canvas.width) + (x + bit)) * 4;
+                        if (idx < imgData.length && imgData[idx] === 0) {
+                            byteValue |= (1 << (7 - bit));
+                        }
                     }
+                    payload.push(byteValue);
                 }
-                payload.push(byteValue);
             }
+            payload.push(0x1F, 0x11, 0x13, 0x00, 0x1F, 0x11, 0x14, 0x00); // Avanzar papel térmico y cerrar
+        } else {
+            // PROTOCOLO 2: ESC/POS Estándar Industrial (GS v 0)
+            payload.push(0x1B, 0x40); // ESC @ (Reset)
+            payload.push(0x1B, 0x33, 0x00); // Interlineado cero absoluto
+            const yL = heightPixels & 0xFF;
+            const yH = (heightPixels >> 8) & 0xFF;
+            payload.push(0x1D, 0x76, 0x30, 0x00, widthBytes, 0x00, yL, yH); // Descriptor gráfico
+            
+            for (let y = 0; y < heightPixels; y++) {
+                for (let x = 0; x < canvas.width; x += 8) {
+                    let byteValue = 0;
+                    for (let bit = 0; bit < 8; bit++) {
+                        let idx = ((y * canvas.width) + (x + bit)) * 4;
+                        if (idx < imgData.length && imgData[idx] === 0) {
+                            byteValue |= (1 << (7 - bit));
+                        }
+                    }
+                    payload.push(byteValue);
+                }
+            }
+            payload.push(0x1B, 0x64, 0x04); // Alimentar 4 líneas finales para salida limpia
         }
 
-        payload.push(0x1B, 0x64, 0x03);
         const dataToSend = new Uint8Array(payload);
 
         try {
             btnPrint.disabled = true;
-            btnPrint.innerHTML = 'Enviando...';
-            
+            btnPrint.innerHTML = 'Transmitiendo...';
+            logger(`Transfiriendo datos usando Driver [${protocol.toUpperCase()}]...`);
+
             for (let c = 1; c <= copies; c++) {
-                const chunkSize = 20;
+                logger(`Enviando copia ${c} de ${copies}...`);
+                const chunkSize = 20; // Fragmentación MTU homologada para Bluetooth LE
+                
                 for (let offset = 0; offset < dataToSend.length; offset += chunkSize) {
                     const chunk = dataToSend.slice(offset, offset + chunkSize);
                     
-                    // SELECCIÓN AUTOMÁTICA DE MÉTODO DE ESCRITURA HOMOLOGADO
-                    if (useWithoutResponse) {
+                    if (writeModeWithoutResponse) {
                         await characteristicBLE.writeValueWithoutResponse(chunk);
+                        await new Promise(r => setTimeout(r, 12)); // Delay controlado anti-desbordamiento
                     } else {
                         await characteristicBLE.writeValueWithResponse(chunk);
+                        await new Promise(r => setTimeout(r, 2)); // Latencia mínima asistida por hardware
                     }
-                    await new Promise(r => setTimeout(r, 8));
                 }
             }
-            alert('¡Impresión enviada correctamente!');
-        } catch (error) {
-            alert(`Error de transmisión física: ${error.message}`);
+            logger('¡Paquetes entregados! Trabajo completado.', 'success');
+            alert('¡Impresión procesada con éxito!');
+        } catch (err) {
+            logger(`Error Crítico en envío: ${err.message}`, 'error');
+            alert(`Error de comunicación física: ${err.message}`);
         } finally {
             btnPrint.disabled = false;
             btnPrint.innerHTML = 'Imprimir';

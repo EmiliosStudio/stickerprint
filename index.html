@@ -270,9 +270,9 @@
 
     let deviceBLE = null;
     let characteristicBLE = null;
+    let useWithoutResponse = false; // Flag dinámico de escritura
     let currentImg = null;
 
-    // Ancho fijo estándar de 384 puntos para cabezales térmicos portátiles de 58mm
     function updateDimensions() {
         canvas.width = 384; 
         if (selectSize.value === '50x15') {
@@ -341,6 +341,7 @@
         }
     }
 
+    // Sincronización robusta con filtrado de canales de datos
     btnConnect.addEventListener('click', async function() {
         if (!navigator.bluetooth) {
             alert('Tu navegador o PC no soporta Web Bluetooth o necesitas usar HTTPS.');
@@ -350,8 +351,12 @@
             deviceBLE = await navigator.bluetooth.requestDevice({
                 acceptAllDevices: true,
                 optionalServices: [
-                    '0000ffe0-0000-1000-8000-00805f9b34fb', // Puerto serie genérico de impresión
-                    '0000ff00-0000-1000-8000-00805f9b34fb'  // Canal alternativo iLabel
+                    '0000ff00-0000-1000-8000-00805f9b34fb',
+                    '0000ffe0-0000-1000-8000-00805f9b34fb',
+                    '0000ffe1-0000-1000-8000-00805f9b34fb',
+                    '0000ff02-0000-1000-8000-00805f9b34fb',
+                    '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+                    '000018f0-0000-1000-8000-00805f9b34fb'
                 ]
             });
 
@@ -359,18 +364,28 @@
             const server = await deviceBLE.gatt.connect();
             const services = await server.getPrimaryServices();
 
+            characteristicBLE = null;
+
             for(let service of services) {
+                const sUuid = service.uuid.toLowerCase();
+                // IGNORAR CANALES DEL SISTEMA OPERATIVO PARA EVITAR COMPORTAMIENTOS PRIVADOS RECHAZADOS (GATT FAILED)
+                if (sUuid.startsWith('00001800') || sUuid.startsWith('00001801') || sUuid.startsWith('0000180a')) {
+                    continue;
+                }
+
                 let characteristics = await service.getCharacteristics();
                 for(let char of characteristics) {
                     if(char.properties.write || char.properties.writeWithoutResponse) {
                         characteristicBLE = char;
+                        // Forzar el método compatible según el hardware del chip
+                        useWithoutResponse = char.properties.writeWithoutResponse;
                         break;
                     }
                 }
                 if(characteristicBLE) break;
             }
 
-            if (!characteristicBLE) throw new Error('No se encontró canal de escritura.');
+            if (!characteristicBLE) throw new Error('No se encontró un canal de impresión válido libre.');
 
             statusIndicator.classList.add('connected');
             statusText.innerHTML = `Conectado: ${deviceBLE.name}`;
@@ -382,31 +397,25 @@
         }
     });
 
-    // SISTEMA DE IMPRESIÓN REVISADO (Comando ESC/POS GS v 0 alternativo)
+    // Inyección de búfer adaptada con conmutación de escritura segura
     btnPrint.addEventListener('click', async function() {
         if (!characteristicBLE || !currentImg) return;
         const copies = parseInt(selectCopies.value);
 
         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-        const widthBytes = canvas.width / 8; // 48 bytes
+        const widthBytes = canvas.width / 8; 
         const heightPixels = canvas.height;
 
         let payload = [];
 
-        // 1. Inicialización (ESC @)
+        // Comandos ESC/POS de impresión gráfica universales
         payload.push(0x1B, 0x40);
-        // 2. Ajustar interlineado a 0 (ESC 3 0) para evitar huecos entre pasadas del cabezal
         payload.push(0x1B, 0x33, 0x00);
 
-        // 3. Comando de impresión gráfica de mapa de bits por densidad (GS v 0)
-        // Estructura: GS v 0 m xL xH yL yH [datos...]
-        // m=0 (normal), xL=48, xH=0 (ancho en bytes), yL, yH (alto en píxeles)
         const yL = heightPixels & 0xFF;
         const yH = (heightPixels >> 8) & 0xFF;
-
         payload.push(0x1D, 0x76, 0x30, 0x00, widthBytes, 0x00, yL, yH);
 
-        // 4. Procesar la cuadrícula de píxeles
         for (let y = 0; y < heightPixels; y++) {
             for (let x = 0; x < canvas.width; x += 8) {
                 let byteValue = 0;
@@ -420,9 +429,7 @@
             }
         }
 
-        // 5. Alimentación de papel final y corte (ESC d 3 líneas)
         payload.push(0x1B, 0x64, 0x03);
-
         const dataToSend = new Uint8Array(payload);
 
         try {
@@ -430,17 +437,22 @@
             btnPrint.innerHTML = 'Enviando...';
             
             for (let c = 1; c <= copies; c++) {
-                // Envío en ráfagas de 20 bytes espaciadas para procesadores BLE lentos
                 const chunkSize = 20;
                 for (let offset = 0; offset < dataToSend.length; offset += chunkSize) {
                     const chunk = dataToSend.slice(offset, offset + chunkSize);
-                    await characteristicBLE.writeValueWithoutResponse(chunk);
-                    await new Promise(r => setTimeout(r, 6)); // 6ms de pausa de flujo
+                    
+                    // SELECCIÓN AUTOMÁTICA DE MÉTODO DE ESCRITURA HOMOLOGADO
+                    if (useWithoutResponse) {
+                        await characteristicBLE.writeValueWithoutResponse(chunk);
+                    } else {
+                        await characteristicBLE.writeValueWithResponse(chunk);
+                    }
+                    await new Promise(r => setTimeout(r, 8));
                 }
             }
             alert('¡Impresión enviada correctamente!');
         } catch (error) {
-            alert(`Error de transmisión: ${error.message}`);
+            alert(`Error de transmisión física: ${error.message}`);
         } finally {
             btnPrint.disabled = false;
             btnPrint.innerHTML = 'Imprimir';

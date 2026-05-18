@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>StickerPrint</title>
+    <style>
+        :root {
+            --bg-color: #0c0d11;
+            --panel-bg: #14161f;
+            --accent: #00ffaa;
+            --accent-hover: #00db92;
+            --text: #ffffff;
+            --text-muted: #7e8494;
+            --border: #222533;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: '-apple-system', BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        /* Fuerza a que todo quepa en una sola pantalla sin hacer scroll */
+        html, body {
+            height: 100vh;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+        }
+
+        .app-container {
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            width: 100%;
+            max-width: 440px;
+            height: 95vh;
+            max-height: 580px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.5);
+        }
+
+        header {
+            text-align: center;
+            padding-bottom: 5px;
+        }
+
+        header h1 {
+            font-size: 1.4rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        header h1 span {
+            color: var(--accent);
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0,0,0,0.25);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            border: 1px solid var(--border);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #ff4444;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+        }
+
+        .status-dot.connected {
+            background-color: var(--accent);
+            box-shadow: 0 0 6px var(--accent);
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        select {
+            background: #1a1d29;
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 8px 10px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 20px 10px;
+            text-align: center;
+            cursor: pointer;
+            background: rgba(255,255,255,0.01);
+            transition: border 0.2s, background 0.2s;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 110px;
+        }
+
+        .upload-zone:hover {
+            border-color: var(--accent);
+            background: rgba(0, 255, 170, 0.02);
+        }
+
+        .upload-zone p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        #file-input { display: none; }
+
+        .preview-container {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sticker-frame {
+            width: 100%;
+            background: #ffffff;
+            border-radius: 4px;
+            overflow: hidden;
+            padding: 4px;
+            border: 1px solid #ffffff;
+        }
+
+        #canvas-preview {
+            width: 100%;
+            height: auto;
+            display: block;
+            image-rendering: pixelated;
+        }
+
+        .btn {
+            background: var(--accent);
+            color: #0c0d11;
+            border: none;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            width: 100%;
+        }
+
+        .btn:hover {
+            background: var(--accent-hover);
+        }
+
+        .btn:disabled {
+            background: var(--border);
+            color: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.05);
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <header>
+        <h1>Sticker<span>Print</span></h1>
+    </header>
+
+    <div class="status-bar">
+        <div>
+            <span id="status-indicator" class="status-dot"></span>
+            <span id="status-text">Impresora desconectada</span>
+        </div>
+    </div>
+
+    <div class="grid-2">
+        <div class="control-group">
+            <label>Medida Etiqueta</label>
+            <select id="select-size">
+                <option value="50x15" selected>50mm x 15mm</option>
+                <option value="50x10">50mm x 10mm</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>Copias</label>
+            <select id="select-copies"></select>
+        </div>
+    </div>
+
+    <div class="upload-zone" id="drop-zone">
+        <p><strong>Haz clic o arrastra aquí</strong></p>
+        <p style="font-size: 0.75rem; margin-top: 4px; color: var(--accent);">tu pegatina (.png, .jpg)</p>
+        <input type="file" id="file-input" accept="image/png, image/jpeg">
+    </div>
+
+    <div class="preview-container">
+        <label>Previsualización Monocromo</label>
+        <div class="sticker-frame">
+            <canvas id="canvas-preview"></canvas>
+        </div>
+    </div>
+
+    <div class="grid-2">
+        <button class="btn btn-secondary" id="btn-connect">Conectar Bluetooth</button>
+        <button class="btn" id="btn-print" disabled>Imprimir</button>
+    </div>
+</div>
+
+<script>
+    // Generar el menú de copias dinámicamente sin errores
+    const selectCopies = document.getElementById('select-copies');
+    for (let i = 1; i <= 20; i++) {
+        let opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = `${i} ${i === 1 ? 'copia' : 'copias'}`;
+        selectCopies.appendChild(opt);
+    }
+
+    const selectSize = document.getElementById('select-size');
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const canvas = document.getElementById('canvas-preview');
+    const ctx = canvas.getContext('2d');
+    const btnConnect = document.getElementById('btn-connect');
+    const btnPrint = document.getElementById('btn-print');
+    const statusIndicator = document.getElementById('status-indicator');
+    const statusText = document.getElementById('status-text');
+
+    let deviceBLE = null;
+    let characteristicBLE = null;
+    let currentImg = null;
+
+    function updateDimensions() {
+        if (selectSize.value === '50x15') {
+            canvas.width = 500;
+            canvas.height = 150;
+        } else {
+            canvas.width = 500;
+            canvas.height = 100;
+        }
+        renderSticker();
+    }
+
+    function renderSticker() {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        if (!currentImg) return;
+
+        let scale = Math.min(canvas.width / currentImg.width, canvas.height / currentImg.height);
+        let w = currentImg.width * scale;
+        let h = currentImg.height * scale;
+        let x = (canvas.width / 2) - (w / 2);
+        let y = (canvas.height / 2) - (h / 2);
+        ctx.drawImage(currentImg, x, y, w, h);
+
+        // Convertir a blanco y negro puro para el cabezal térmico
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imgData.data;
+        for (let i = 0; i < data.length; i += 4) {
+            let brightness = 0.34 * data[i] + 0.5 * data[i + 1] + 0.16 * data[i + 2];
+            let color = brightness > 128 ? 255 : 0;
+            data[i] = color; data[i+1] = color; data[i+2] = color;
+        }
+        ctx.putImageData(imgData, 0, 0);
+    }
+
+    selectSize.addEventListener('change', updateDimensions);
+
+    // Eventos de carga corregidos y limpios
+    dropZone.addEventListener('click', function() { 
+        fileInput.click(); 
+    });
+    
+    dropZone.addEventListener('dragover', function(e) { 
+        e.preventDefault(); 
+        dropZone.style.borderColor = 'var(--accent)'; 
+    });
+    
+    dropZone.addEventListener('dragleave', function() { 
+        dropZone.style.borderColor = 'var(--border)'; 
+    });
+    
+    dropZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        dropZone.style.borderColor = 'var(--border)';
+        if (e.dataTransfer.files.length > 0) {
+            processFile(e.dataTransfer.files[0]);
+        }
+    });
+
+    fileInput.addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+            processFile(e.target.files[0]);
+        }
+    });
+
+    function processFile(file) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            currentImg = new Image();
+            currentImg.onload = function() {
+                updateDimensions();
+                checkReady();
+            };
+            currentImg.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function checkReady() {
+        if (currentImg && characteristicBLE) {
+            btnPrint.disabled = false;
+        } else {
+            btnPrint.disabled = true;
+        }
+    }
+
+    // Vinculación por Bluetooth
+    btnConnect.addEventListener('click', async function() {
+        if (!navigator.bluetooth) {
+            alert('Tu navegador o PC no soporta Web Bluetooth, o no estás usando HTTPS (GitHub Pages).');
+            return;
+        }
+        try {
+            deviceBLE = await navigator.bluetooth.requestDevice({
+                acceptAllDevices: true,
+                optionalServices: [
+                    '0000ffe0-0000-1000-8000-00805f9b34fb',
+                    '0000ff00-0000-1000-8000-00805f9b34fb',
+                    '000018f0-0000-1000-8000-00805f9b34fb',
+                    '49535343-fe7d-4ae5-8fa9-9fafd205e455'
+                ]
+            });
+
+            statusText.innerHTML = "Conectando...";
+            const server = await deviceBLE.gatt.connect();
+            const services = await server.getPrimaryServices();
+
+            for(let service of services) {
+                let characteristics = await service.getCharacteristics();
+                for(let char of characteristics) {
+                    if(char.properties.write || char.properties.writeWithoutResponse) {
+                        characteristicBLE = char;
+                        break;
+                    }
+                }
+                if(characteristicBLE) break;
+            }
+
+            if (!characteristicBLE) throw new Error('Canal de escritura no disponible.');
+
+            statusIndicator.classList.add('connected');
+            statusText.innerHTML = `Conectado: ${deviceBLE.name}`;
+            btnConnect.innerHTML = 'Listo ✓';
+            checkReady();
+        } catch (error) {
+            statusText.innerHTML = "Impresora desconectada";
+            alert(`Error de sincronización: ${error.message}`);
+        }
+    });
+
+    // Envío de impresión térmica
+    btnPrint.addEventListener('click', async function() {
+        if (!characteristicBLE || !currentImg) return;
+        const copies = parseInt(selectCopies.value);
+
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+        let bufferBytes = [];
+
+        bufferBytes.push(0x1B, 0x40); // Reset
+
+        for (let y = 0; y < canvas.height; y++) {
+            for (let x = 0; x < canvas.width; x += 8) {
+                let byteValue = 0;
+                for (let bit = 0; bit < 8; bit++) {
+                    let idx = ((y * canvas.width) + (x + bit)) * 4;
+                    if (idx < imgData.length && imgData[idx] === 0) {
+                        byteValue |= (1 << (7 - bit));
+                    }
+                }
+                bufferBytes.push(byteValue);
+            }
+        }
+
+        bufferBytes.push(0x1D, 0x56, 0x42, 0x00); // Corte/Avance
+        const dataToSend = new Uint8Array(bufferBytes);
+
+        try {
+            btnPrint.disabled = true;
+            btnPrint.innerHTML = 'Enviando...';
+            
+            for (let c = 1; c <= copies; c++) {
+                const chunkSize = 20;
+                for (let offset = 0; offset < dataToSend.length; offset += chunkSize) {
+                    const chunk = dataToSend.slice(offset, offset + chunkSize);
+                    await characteristicBLE.writeValueWithoutResponse(chunk);
+                    await new Promise(r => setTimeout(r, 8));
+                }
+            }
+            alert('¡Impresión completada con éxito!');
+        } catch (error) {
+            alert(`Error en la cola de impresión: ${error.message}`);
+        } finally {
+            btnPrint.disabled = false;
+            btnPrint.innerHTML = 'Imprimir';
+        }
+    });
+
+    updateDimensions();
+</script>
+</body>
+</html>

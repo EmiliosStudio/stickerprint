@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>StickerPrint | Emilio's Studio</title>
+    <style>
+        :root {
+            --bg-color: #0c0d11;
+            --panel-bg: #14161f;
+            --accent: #00ffaa;
+            --accent-hover: #00db92;
+            --text: #ffffff;
+            --text-muted: #7e8494;
+            --border: #222533;
+            --console-bg: #090a0e;
+            --danger: #ff4444;
+            --font-mono: 'Courier New', Courier, monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 440px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-color);
+            border-left: 1px solid var(--border);
+            border-right: 1px solid var(--border);
+        }
+
+        /* UI Header */
+        header {
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        header h1 {
+            color: var(--accent);
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            margin-top: 4px;
+        }
+
+        /* Main Scrollable Content */
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Preview Section */
+        .preview-box {
+            background: var(--panel-bg);
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border: 1px solid var(--border);
+        }
+
+        .sticker-frame {
+            background: white;
+            padding: 5px;
+            box-shadow: 0 0 20px rgba(0, 255, 170, 0.1);
+            margin-bottom: 10px;
+            line-height: 0;
+        }
+
+        #canvas-preview {
+            max-width: 100%;
+            height: auto;
+            image-rendering: pixelated;
+        }
+
+        /* Upload Zone */
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: var(--text-muted);
+        }
+
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: var(--accent);
+            background: rgba(0, 255, 170, 0.05);
+            color: var(--accent);
+        }
+
+        /* Controls */
+        .controls-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .control-group label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        select, input {
+            background: var(--console-bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px;
+            border-radius: 6px;
+            outline: none;
+            font-size: 0.9rem;
+        }
+
+        select:focus { border-color: var(--accent); }
+
+        /* Print Button */
+        #btn-print {
+            background: var(--accent);
+            color: var(--bg-color);
+            border: none;
+            padding: 16px;
+            border-radius: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: transform 0.1s ease, background 0.3s ease;
+            margin-top: 10px;
+        }
+
+        #btn-print:disabled {
+            background: var(--border);
+            color: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        #btn-print:active { transform: scale(0.98); }
+
+        /* Terminal */
+        .terminal-box {
+            background: var(--console-bg);
+            height: 100px;
+            border-top: 1px solid var(--border);
+            padding: 10px;
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            overflow-y: auto;
+            color: var(--accent);
+        }
+
+        .log-entry { margin-bottom: 4px; }
+        .log-error { color: var(--danger); }
+        .log-time { color: var(--text-muted); margin-right: 8px; }
+
+        input[type="file"] { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <header>
+        <h1>StickerPrint</h1>
+        <p>Emilio's Studio | Advanced BLE Driver</p>
+    </header>
+
+    <div class="content">
+        <div class="upload-zone" id="drop-zone">
+            <p>Tocar para cargar o arrastrar imagen</p>
+            <input type="file" id="file-input" accept="image/*">
+        </div>
+
+        <div class="preview-box">
+            <div class="sticker-frame">
+                <canvas id="canvas-preview"></canvas>
+            </div>
+            <p style="font-size: 0.65rem; color: var(--text-muted);">Vista previa térmica (1-bit)</p>
+        </div>
+
+        <div class="controls-grid">
+            <div class="control-group">
+                <label>Tamaño Etiqueta</label>
+                <select id="select-size">
+                    <option value="15">50mm x 15mm</option>
+                    <option value="10">50mm x 10mm</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Protocolo</label>
+                <select id="select-protocol">
+                    <option value="A">iLabel Nativo (MX05)</option>
+                    <option value="B">ESC/POS Raster</option>
+                    <option value="C">ESC/POS Universal</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Copias</label>
+                <select id="select-copies">
+                    <!-- JS populated -->
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Concentración</label>
+                <select id="select-density">
+                    <option value="medium">Media</option>
+                    <option value="high">Alta</option>
+                </select>
+            </div>
+        </div>
+
+        <button id="btn-print">Conectar e Imprimir</button>
+    </div>
+
+    <div class="terminal-box" id="terminal">
+        <div class="log-entry">Esperando sistema...</div>
+    </div>
+</div>
+
+<script>
+    /**
+     * StickerPrint Driver v2.0 - Emilio's Studio
+     * Optimized for MX05 Hardware (iLabel Protocol)
+     */
+
+    // Constantes de Hardware extraídas de iLabel APK
+    const SERVICE_UUIDS = ['0000ff00-0000-1000-8000-00805f9b34fb', '0000ffe0-0000-1000-8000-00805f9b34fb'];
+    const CHARACTERISTIC_UUIDS = ['0000ff02-0000-1000-8000-00805f9b34fb', '0000ffe1-0000-1000-8000-00805f9b34fb'];
+    const PRINTER_WIDTH_PX = 384; // 48 bytes
+    const MTU_SIZE = 20;
+
+    // Estado Global
+    let bleDevice = null;
+    let bleChar = null;
+    let currentImage = null;
+    let useWriteWithoutResponse = true;
+
+    // UI Elements
+    const terminal = document.getElementById('terminal');
+    const canvas = document.getElementById('canvas-preview');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const selectSize = document.getElementById('select-size');
+    const selectCopies = document.getElementById('select-copies');
+    const btnPrint = document.getElementById('btn-print');
+
+    // Inicialización de copias
+    for (let i = 1; i <= 20; i++) {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = `${i} unidad${i > 1 ? 'es' : ''}`;
+        selectCopies.appendChild(opt);
+    }
+
+    // Logger
+    function logger(msg, type = 'info') {
+        const entry = document.createElement('div');
+        entry.className = `log-entry ${type === 'error' ? 'log-error' : ''}`;
+        const time = new Date().toLocaleTimeString([], { hour12: false, minute: '2-digit', second: '2-digit' });
+        entry.innerHTML = `<span class="log-time">[${time}]</span>${msg}`;
+        terminal.appendChild(entry);
+        terminal.scrollTop = terminal.scrollHeight;
+    }
+
+    // Image Setup
+    function setupCanvas() {
+        const heightMm = parseInt(selectSize.value);
+        // 203 DPI -> 8 dots/mm approx.
+        // 15mm -> 114px, 10mm -> 76px
+        const h = heightMm === 15 ? 114 : 76;
+        canvas.width = PRINTER_WIDTH_PX;
+        canvas.height = h;
+        if (currentImage) processImage(currentImage);
+    }
+
+    selectSize.addEventListener('change', setupCanvas);
+    setupCanvas();
+
+    // Eventos Drag & Drop
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length) handleFile(e.target.files[0]);
+    });
+
+    function handleFile(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                currentImage = img;
+                processImage(img);
+                logger(`Imagen cargada: ${file.name}`);
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function processImage(img) {
+        // Clear and fill white
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Aspect Fit
+        const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+        const x = (canvas.width / 2) - (img.width / 2) * scale;
+        const y = (canvas.height / 2) - (img.height / 2) * scale;
+        ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+
+        // Binarization
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+
+        for (let i = 0; i < data.length; i += 4) {
+            // Se asume fondo blanco para transparencia
+            const alpha = data[i + 3] / 255;
+            const r = data[i] * alpha + 255 * (1 - alpha);
+            const g = data[i + 1] * alpha + 255 * (1 - alpha);
+            const b = data[i + 2] * alpha + 255 * (1 - alpha);
+
+            // Luminance standard
+            const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+            const threshold = 128;
+            const v = lum > threshold ? 255 : 0;
+
+            data[i] = data[i + 1] = data[i + 2] = v;
+            data[i + 3] = 255;
+        }
+        ctx.putImageData(imageData, 0, 0);
+    }
+
+    // Bit-Packing: 8 pixels horizontal en 1 byte
+    function getBitMap() {
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const pixels = imageData.data;
+        const bytes = new Uint8Array((canvas.width * canvas.height) / 8);
+        
+        let byteIndex = 0;
+        for (let y = 0; y < canvas.height; y++) {
+            for (let x = 0; x < canvas.width; x += 8) {
+                let byte = 0;
+                for (let bit = 0; bit < 8; bit++) {
+                    const pixelIdx = ((y * canvas.width) + (x + bit)) * 4;
+                    // Negro es 0 dot, Blanco es 1 dot para la MX05 (a veces inverso)
+                    // Firmware de MX05 suele usar 1 para Negro
+                    if (pixels[pixelIdx] < 128) {
+                        byte |= (1 << (7 - bit));
+                    }
+                }
+                bytes[byteIndex++] = byte;
+            }
+        }
+        return bytes;
+    }
+
+    // Communication Engine
+    async function print() {
+        if (!currentImage) {
+            logger("Error: No hay imagen cargada", "error");
+            return;
+        }
+
+        try {
+            btnPrint.disabled = true;
+            btnPrint.textContent = "Transmitiendo...";
+
+            if (!bleDevice || !bleDevice.gatt.connected) {
+                logger("Iniciando escaneo BLE...");
+                bleDevice = await navigator.bluetooth.requestDevice({
+                    filters: [{ namePrefix: 'MX' }, { namePrefix: 'Label' }, { namePrefix: 'M11' }],
+                    optionalServices: SERVICE_UUIDS
+                });
+
+                logger(`Dispositivo encontrado: ${bleDevice.name}`);
+                const server = await bleDevice.gatt.connect();
+
+                let foundService = null;
+                for (const uuid of SERVICE_UUIDS) {
+                    try {
+                        foundService = await server.getPrimaryService(uuid);
+                        if (foundService) break;
+                    } catch (e) { continue; }
+                }
+
+                if (!foundService) throw new Error("No se encontró el servicio de impresión");
+
+                for (const uuid of CHARACTERISTIC_UUIDS) {
+                    try {
+                        bleChar = await foundService.getCharacteristic(uuid);
+                        if (bleChar) break;
+                    } catch (e) { continue; }
+                }
+
+                if (!bleChar) throw new Error("No se encontró la característica de escritura");
+
+                // Identificar modo de escritura
+                useWriteWithoutResponse = bleChar.properties.writeWithoutResponse;
+                logger(`Enlazado exitoso. Modo: ${useWriteWithoutResponse ? 'Directo' : 'Con Confirmación'}`);
+            }
+
+            const protocol = document.getElementById('select-protocol').value;
+            const copies = parseInt(selectCopies.value);
+            const bitmap = getBitMap();
+            
+            logger(`Preparando ráfaga: ${bitmap.length} bytes`);
+
+            for (let c = 0; c < copies; c++) {
+                logger(`Enviando copia ${c + 1}/${copies}...`);
+                
+                const buffer = createFullCommand(protocol, bitmap);
+                await sendInChunks(buffer);
+            }
+
+            logger("Impresión finalizada con éxito", "info");
+
+        } catch (err) {
+            logger(`Error Crítico: ${err.message}`, "error");
+            if (bleDevice) bleDevice.gatt.disconnect();
+            bleDevice = null;
+        } finally {
+            btnPrint.disabled = false;
+            btnPrint.textContent = "Conectar e Imprimir";
+        }
+    }
+
+    function createFullCommand(protocol, bitmap) {
+        const chunks = [];
+        const height = canvas.height;
+        const widthBytes = PRINTER_WIDTH_PX / 8; // 48
+
+        // Protocol Selection
+        if (protocol === 'A') {
+            // iLabel Native (MX05) Pattern
+            chunks.push(new Uint8Array([0x1B, 0x40])); // Init
+            chunks.push(new Uint8Array([0x1F, 0x11, 0x02])); // Label Start
+            
+            // Raster command ESC/POS GS v 0
+            const header = new Uint8Array([0x1D, 0x76, 0x30, 0x00, 48, 0, height % 256, Math.floor(height / 256)]);
+            chunks.push(header);
+            chunks.push(bitmap);
+            
+            chunks.push(new Uint8Array([0x1B, 0x4A, 0x40])); // Feed
+            chunks.push(new Uint8Array([0x1F, 0x11, 0x0F])); // End
+        } else if (protocol === 'B') {
+            // Standard Raster
+            chunks.push(new Uint8Array([0x1B, 0x40]));
+            chunks.push(new Uint8Array([0x1B, 0x33, 0x00])); // Zero line spacing
+            const rasterHeader = new Uint8Array([0x1D, 0x76, 0x30, 0x00, 48, 0, height % 256, Math.floor(height / 256)]);
+            chunks.push(rasterHeader);
+            chunks.push(bitmap);
+            chunks.push(new Uint8Array([0x1B, 0x64, 0x02])); // Feed 2 lines
+        } else {
+            // Multi-line alternative
+            chunks.push(new Uint8Array([0x1B, 0x40]));
+            for (let y = 0; y < height; y++) {
+                const line = bitmap.slice(y * 48, (y + 1) * 48);
+                const lineHeader = new Uint8Array([0x1D, 0x76, 0x30, 0x00, 48, 0, 1, 0]);
+                chunks.push(lineHeader);
+                chunks.push(line);
+            }
+            chunks.push(new Uint8Array([0x1B, 0x4A, 0x10]));
+        }
+
+        // Merge all
+        let totalLen = chunks.reduce((acc, curr) => acc + curr.length, 0);
+        let finalBuf = new Uint8Array(totalLen);
+        let offset = 0;
+        for (const c of chunks) {
+            finalBuf.set(c, offset);
+            offset += c.length;
+        }
+        return finalBuf;
+    }
+
+    async function sendInChunks(data) {
+        const delay = useWriteWithoutResponse ? 15 : 5;
+        let pos = 0;
+        
+        while (pos < data.length) {
+            const chunk = data.slice(pos, pos + MTU_SIZE);
+            try {
+                if (useWriteWithoutResponse) {
+                    await bleChar.writeValueWithoutResponse(chunk);
+                } else {
+                    await bleChar.writeValue(chunk); // writeValueWithResponse
+                }
+                pos += MTU_SIZE;
+                // Pequeño retardo para no saturar memoria flash térmica
+                await new Promise(r => setTimeout(r, delay));
+            } catch (e) {
+                // Retry logic o delay mayor si falla por buffer ocupado
+                if (e.name === 'NetworkError') {
+                    await new Promise(r => setTimeout(r, 100));
+                    continue;
+                }
+                throw e;
+            }
+        }
+    }
+
+    btnPrint.addEventListener('click', print);
+
+</script>
+
+</body>
+</html>

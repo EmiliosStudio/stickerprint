@@ -1,0 +1,8 @@
+{
+  "name": "StickerPrint MX05",
+  "description": "Controlador web de alta precisión para impresoras térmicas de etiquetas MX05 (iLabel) de Emilio's Studio. Soporte para etiquetas de 50mm.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
